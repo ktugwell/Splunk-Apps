@@ -1,0 +1,6 @@
+<nav search_view="search" color="#000000">
+  <view name="overview" default='true' />
+  <view name="dashboard_version_history" />
+  <view name="report_alert_version_history" />
+  <view name="search" />
+</nav>

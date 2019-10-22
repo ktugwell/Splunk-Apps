@@ -1,0 +1,94 @@
+<form>
+  <label>Dashboard Version History</label>
+            <search base="db_search">
+          <query>| eval history="$history_tok$"  | where _time=strptime(history, "%Y-%m-%dT%H:%M:%S") | table user</query>
+          <done>
+            <set token="edited_by">$result.user$</set>
+          </done>
+        </search>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="app_tok">
+      <label>App</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <search>
+        <query>| rest splunk_server=local /services/apps/local | fields label title</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="db_tok">
+      <label>Dashboard</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>endpoint</fieldForValue>
+      <search>
+        <query>| rest splunk_server=local /servicesNS/-/-/data/ui/views/ | fields id rootNode label eai:acl.app | search (rootNode=dashboard OR rootNode=form) eai:acl.app=$app_tok$ | rex field=id "(?&lt;endpoint&gt;\/servicesNS.*)"</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <input type="dropdown" token="user_tok">
+        <label>Edited by</label>
+        <fieldForLabel>user</fieldForLabel>
+        <fieldForValue>user</fieldForValue>
+        <search>
+          <query>index=version_history sourcetype=vh:dashboard | eval endpoint=urldecode("$db_tok$") | rex field=endpoint "views\/(?&lt;ep_title&gt;.*)" | where db_title=ep_title | stats count by user</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <choice value="*">Any</choice>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="dropdown" token="history_tok">
+        <label>History</label>
+        <fieldForLabel>_time</fieldForLabel>
+        <fieldForValue>_time</fieldForValue>
+        <search id="db_search">
+          <query>index=version_history sourcetype=vh:dashboard user="$user_tok$" | eval endpoint="$db_tok$" | rex field=endpoint "views\/(?&lt;ep_title&gt;.*)" | where db_title=ep_title | fields *</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+      </input>
+      <table>
+        <title>Version History</title>
+        <search base="db_search">
+          <query>| eval history="$history_tok$"  | where _time=strptime(history, "%Y-%m-%dT%H:%M:%S") | table xml</query>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <input type="dropdown" token="field1">
+        <label>Version</label>
+        <choice value="*">Current</choice>
+        <default>*</default>
+        <initialValue>*</initialValue>
+      </input>
+      <table>
+        <title>Current Version</title>
+        <search>
+          <query>| rest splunk_server=local $db_tok$ | rename eai:data as xml | fields xml</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+    <row>
+<html>
+  <font size="4pt">This Dashboard was edited on <b>$history_tok$</b> by <b>$edited_by$</b></font>
+</html>
+  </row>
+</form>
